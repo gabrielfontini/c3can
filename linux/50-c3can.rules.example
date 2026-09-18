@@ -1,0 +1,5 @@
+# Replace YOUR_ESP32_SERIAL with:
+#
+# udevadm info -q property -n /dev/ttyACM0 | grep ID_SERIAL_SHORT
+#
+ACTION=="add", SUBSYSTEM=="tty", KERNEL=="ttyACM*", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", ATTRS{serial}=="YOUR_ESP32_SERIAL", SYMLINK+="c3can", ENV{ID_MM_DEVICE_IGNORE}="1", TAG+="systemd", ENV{SYSTEMD_WANTS}+="c3can@%k.service"

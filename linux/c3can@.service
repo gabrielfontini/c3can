@@ -1,0 +1,22 @@
+[Unit]
+Description=C3CAN USB-CAN adapter on %I
+BindsTo=dev-%i.device
+After=dev-%i.device
+
+[Service]
+Type=simple
+
+ExecStartPre=/usr/sbin/modprobe can
+ExecStartPre=/usr/sbin/modprobe can_raw
+ExecStartPre=/usr/sbin/modprobe slcan
+
+ExecStart=/usr/bin/slcand -F -c -f -b43A301 -o /dev/%I can0
+
+ExecStartPost=/usr/sbin/ip link set can0 txqueuelen 1000
+ExecStartPost=/usr/sbin/ip link set can0 up
+
+ExecStopPost=-/usr/sbin/ip link set can0 down
+
+Restart=on-failure
+RestartSec=1
+

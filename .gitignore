@@ -1,0 +1,159 @@
+# ------------------------------------------------------------
+# C3CAN .gitignore
+# ESP-IDF + VS Code + KiCad + Linux
+# ------------------------------------------------------------
+
+# ESP-IDF build output
+build/
+managed_components/
+dependencies.lock
+
+# ESP-IDF generated configuration
+sdkconfig
+sdkconfig.old
+sdkconfig.ci
+sdkconfig.defaults.local
+
+# If you want sdkconfig.defaults versioned (recommended), do NOT ignore it.
+# sdkconfig.defaults
+
+# CMake / Ninja
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+.ninja_deps
+.ninja_log
+*.ninja
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+
+# CLion / JetBrains
+.idea/
+cmake-build-*/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+
+# Temporary / editor
+*.swp
+*.swo
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+
+# Logs / captures generated during testing
+*.log
+*.trace
+*.pcap
+*.pcapng
+candump-*.txt
+canlog-*.txt
+
+# ESP crash / debug artifacts
+core
+core.*
+*.elf.map
+
+# ------------------------------------------------------------
+# KiCad
+# Keep source design files in Git.
+# Ignore backups, rescue/temp files and local machine state.
+# ------------------------------------------------------------
+
+# KiCad backups
+*-backups/
+*.bak
+*.bck
+*.kicad_prl
+*.kicad_pro-bak
+*.kicad_sch-bak
+*.kicad_pcb-bak
+
+# KiCad temporary files
+*.lck
+*.kicad_sch.lck
+*.kicad_pcb.lck
+~*.kicad_sch
+~*.kicad_pcb
+
+# KiCad legacy rescue/cache artifacts
+*-rescue.lib
+*-rescue.dcm
+*.cache.lib
+
+# Autosave
+_autosave-*
+*.autosave
+
+# ------------------------------------------------------------
+# Generated manufacturing outputs
+#
+# Recommendation:
+# - Keep them ignored during development.
+# - For tagged hardware releases, attach Gerber/Drill/BOM archives to
+#   GitHub Releases, or explicitly force-add a release/ folder.
+# ------------------------------------------------------------
+hardware/kicad/gerbers/
+hardware/kicad/generated/
+hardware/kicad/manufacturing/
+*.gbr
+*.ger
+*.gtl
+*.gbl
+*.gts
+*.gbs
+*.gto
+*.gbo
+*.drl
+*.xln
+*.pos
+
+# BOM exports that are generated automatically
+*-bom.csv
+*-bom.xlsx
+*-bom.xml
+
+# 3D exports / renders generated from KiCad
+*.step
+*.stp
+*.wrl
+
+# ------------------------------------------------------------
+# Local Linux setup / secrets
+# ------------------------------------------------------------
+*.local
+*.secret
+.env
+.env.*
+!.env.example
+
+# Local serial/device notes
+local-device.conf
+local-udev.rules
+
+# ------------------------------------------------------------
+# Archives / release packages
+# ------------------------------------------------------------
+*.zip
+*.tar
+*.tar.gz
+*.7z

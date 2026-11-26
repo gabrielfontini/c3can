@@ -689,6 +689,9 @@ static void can_rx_task(
         }
 
 
+        can_twai_service();
+
+
         esp_err_t result =
             can_twai_receive(
                 &message,

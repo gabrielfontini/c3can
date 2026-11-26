@@ -30,3 +30,5 @@ esp_err_t can_twai_receive(
 );
 
 uint8_t can_twai_get_slcan_status(void);
+
+void can_twai_service(void);

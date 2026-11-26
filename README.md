@@ -1,12 +1,16 @@
 # C3CAN
 
 <p align="center">
+  <img src="docs/images/banner.png" alt="C3CAN — open-source USB-CAN adapter built on the ESP32-C3" width="100%">
+</p>
+
+<p align="center">
   <strong>Open-source USB-CAN adapter based on the ESP32-C3</strong><br>
   Native USB • TWAI/CAN 2.0 • SLCAN/LAWICEL • Linux SocketCAN • ESP-IDF • KiCad
 </p>
 
 > **Project status:** active development / prototype stage.  
-> The USB/SLCAN/SocketCAN path has been bench-tested on Linux. The custom KiCad PCB and full physical-bus validation matrix are still in progress.
+> The USB/SLCAN/SocketCAN path has been bench-tested on Linux, including bidirectional traffic at 500 kbit/s against an independent STM32 CAN node. The custom KiCad PCB is nearly finished and its manufacturing files will be published here soon.
 
 ---
 
@@ -33,6 +37,10 @@ C3CAN is **Classical CAN only**. CAN FD is not currently supported.
 
 The ESP32-C3 already includes a TWAI controller and a native USB Serial/JTAG peripheral, so an external CAN controller such as the MCP2515 is not required.
 
+<p align="center">
+  <img src="docs/images/architecture.png" alt="C3CAN architecture: can-utils → SocketCAN → slcan → USB → ESP32-C3 firmware → TWAI → transceiver → CAN bus" width="100%">
+</p>
+
 The basic architecture is:
 
 ```text
@@ -51,7 +59,7 @@ ESP32-C3
 TWAI
    │
 GPIO4 TX
-GPIO5 RX
+GPIO6 RX
    │
    ▼
 CAN transceiver
@@ -80,13 +88,18 @@ candump cansend   canplayer
 
 ## Current prototype hardware
 
-The first bench prototype uses:
+<p align="center">
+  <img src="docs/images/wiring.png" alt="Prototype wiring: ESP32-C3 GPIO4 to transceiver D, transceiver R through a 1k/2k divider to GPIO6" width="100%">
+</p>
+
+The bench prototype uses:
 
 - ESP32-C3 Super Mini
-- MCP2551 CAN transceiver
-- GPIO4 as TWAI TX
-- GPIO5 as TWAI RX
-- 5 V for the MCP2551 from the USB-powered board
+- 5 V high-speed CAN transceiver (SN65HVD251; the MCP2551 has the same pinout)
+- GPIO4 as TWAI TX → transceiver `D`
+- GPIO6 as TWAI RX ← transceiver `R`, through a 1 kΩ / 2 kΩ divider (5 V → ~3.3 V)
+- transceiver `Rs` tied to GND (high-speed mode)
+- 5 V for the transceiver from the USB-powered board
 - common ground between ESP32-C3 and transceiver
 - 100 nF local decoupling at the CAN transceiver
 - selectable ~120 Ω CAN termination
@@ -94,7 +107,9 @@ The first bench prototype uses:
 
 ### Important prototype note
 
-The MCP2551 is a 5 V transceiver while the ESP32-C3 uses 3.3 V I/O. The current breadboard/prototype uses level adaptation on RX.
+The SN65HVD251/MCP2551 are 5 V transceivers while the ESP32-C3 uses 3.3 V I/O. The prototype therefore uses a 1 kΩ / 2 kΩ resistor divider on RX. The TX line is driven directly at 3.3 V: this is fine for the SN65HVD251 (`D` input V<sub>IH</sub> = 2 V), but marginal for the MCP2551 (V<sub>IH</sub> = 0.7 × V<sub>DD</sub> ≈ 3.5 V), which is one more reason the PCB will move to a 3.3 V-compatible transceiver.
+
+RX was moved from GPIO5 to GPIO6 during bring-up. The pins are defined in `main/can_twai.c` (`CAN_TX_GPIO` / `CAN_RX_GPIO`).
 
 For the custom PCB, the preferred direction is to use either:
 
@@ -125,18 +140,25 @@ C3CAN/
 ├── main/
 │   ├── CMakeLists.txt
 │   ├── main.c
-│   ├── usb_slcan.c
+│   ├── usb_slcan.c          # USB Serial/JTAG + SLCAN parser, CAN RX task
 │   ├── usb_slcan.h
-│   ├── can_twai.c
+│   ├── can_twai.c           # TWAI driver wrapper, bitrates, status, bus-off recovery
 │   └── can_twai.h
-├── hardware/
-│   └── kicad/
 ├── linux/
+│   ├── 50-c3can.rules.example
+│   └── c3can@.service
 ├── docs/
-├── images/
-├── LICENSE
+│   └── images/
 └── README.md
 ```
+
+Coming next: `hardware/kicad/` (schematic, PCB, Gerbers, BOM) and `LICENSE` files.
+
+### Firmware behavior
+
+- default bitrate after boot: **500 kbit/s** (`S6`); the host can change it with `S0`...`S8` while the channel is closed;
+- TWAI queues: 32 frames TX, 64 frames RX;
+- **automatic bus-off recovery**: if the controller enters BUS-OFF (TEC > 255), the RX task calls `twai_initiate_recovery()` and restarts the controller once recovery completes, so the adapter does not stay silent until the host sends `C`/`O` again (`slcand` only sends `O` once at startup).
 
 ---
 
@@ -225,10 +247,10 @@ sudo modprobe can_raw
 sudo modprobe slcan
 ```
 
-Attach the C3CAN adapter using the 250 kbit/s compatibility timing:
+Attach the C3CAN adapter at 500 kbit/s (`S6`, default; use `-b43A301` for the 250 kbit/s compatibility timing):
 
 ```bash
-sudo slcan_attach -f -b43A301 -o /dev/ttyACM0
+sudo slcan_attach -f -s6 -o /dev/ttyACM0
 sudo slcand ttyACM0 can0
 sudo ip link set can0 txqueuelen 1000
 sudo ip link set can0 up
@@ -313,7 +335,7 @@ Type=simple
 ExecStartPre=/usr/sbin/modprobe can
 ExecStartPre=/usr/sbin/modprobe can_raw
 ExecStartPre=/usr/sbin/modprobe slcan
-ExecStart=/usr/bin/slcand -F -c -f -b43A301 -o /dev/%I can0
+ExecStart=/usr/bin/slcand -F -c -f -s6 -o /dev/%I can0
 ExecStartPost=/usr/sbin/ip link set can0 txqueuelen 1000
 ExecStartPost=/usr/sbin/ip link set can0 up
 ExecStopPost=-/usr/sbin/ip link set can0 down
@@ -355,6 +377,7 @@ The C3CAN PCB is planned to include switchable/jumper-selectable termination.
 - [x] USB serial echo
 - [x] SLCAN command parser
 - [x] TWAI open/close
+- [x] 500 kbit/s default (`S6`)
 - [x] 250 kbit/s compatibility command (`s43A301`)
 - [x] Linux `slcan`
 - [x] SocketCAN `can0`
@@ -363,13 +386,15 @@ The C3CAN PCB is planned to include switchable/jumper-selectable termination.
 - [x] udev + systemd automatic interface creation
 - [x] SLCAN status command infrastructure
 - [x] timestamp enable/disable infrastructure
+- [x] bidirectional traffic at 500 kbit/s with an STM32G431 (NUCLEO) CAN node — ACK OK, TEC/REC = 0
+- [x] automatic bus-off recovery
 
 ### Implemented, additional validation recommended
 
 - [ ] Extended 29-bit CAN frames
 - [ ] RTR frames
 - [ ] Timestamp behavior under sustained RX load
-- [ ] Error-warning / error-passive / bus-off transitions
+- [ ] Error-warning / error-passive transitions under fault injection
 - [ ] Long-duration traffic and queue stress
 - [ ] Physical TX/RX test matrix using a second independent CAN adapter
 
@@ -412,7 +437,7 @@ ESP32-C3
 CANH / CANL / GND
 ```
 
-The KiCad source files, Gerbers, BOM and assembly drawings will be published in this repository.
+The PCB is nearly finished. The KiCad source files, Gerbers, BOM and assembly drawings will be published in this repository so anyone can order and assemble the board.
 
 ---
 
@@ -478,7 +503,7 @@ One example is:
 
 AI tools were used during development as an engineering assistant.
 
-In particular, OpenAI's ChatGPT was used for tasks including:
+In particular, OpenAI's ChatGPT and Anthropic's Claude (Claude Code) were used for tasks including:
 
 - brainstorming architecture and naming;
 - discussing ESP32-C3, TWAI and SLCAN integration;

@@ -5,6 +5,7 @@
 
 # ESP-IDF build output
 build/
+build_c3/
 managed_components/
 dependencies.lock
 

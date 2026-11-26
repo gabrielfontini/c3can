@@ -5,13 +5,13 @@
 
 
 #define CAN_TX_GPIO    GPIO_NUM_4
-#define CAN_RX_GPIO    GPIO_NUM_5
+#define CAN_RX_GPIO    GPIO_NUM_6
 
 
 static bool driver_installed = false;
 static bool can_running = false;
 
-static uint32_t selected_bitrate = 250000;
+static uint32_t selected_bitrate = 500000;
 
 static uint32_t last_rx_missed_count = 0;
 static uint32_t last_rx_overrun_count = 0;
@@ -507,4 +507,38 @@ uint8_t can_twai_get_slcan_status(void)
 
 
     return flags;
+}
+
+/* ============================================================
+ * BUS-OFF RECOVERY
+ *
+ * O TWAI entra em BUS-OFF (TEC > 255) e fica parado até
+ * twai_initiate_recovery(); depois de 128 x 11 bits recessivos
+ * ele vai para STOPPED e precisa de twai_start(). Sem isto o
+ * adaptador fica mudo até o host mandar C/O de novo (o slcand
+ * só manda O ao subir).
+ * ============================================================ */
+
+void can_twai_service(void)
+{
+    if (!driver_installed || !can_running)
+    {
+        return;
+    }
+
+    twai_status_info_t status;
+
+    if (twai_get_status_info(&status) != ESP_OK)
+    {
+        return;
+    }
+
+    if (status.state == TWAI_STATE_BUS_OFF)
+    {
+        twai_initiate_recovery();
+    }
+    else if (status.state == TWAI_STATE_STOPPED)
+    {
+        twai_start();
+    }
 }

@@ -10,7 +10,7 @@ ExecStartPre=/usr/sbin/modprobe can
 ExecStartPre=/usr/sbin/modprobe can_raw
 ExecStartPre=/usr/sbin/modprobe slcan
 
-ExecStart=/usr/bin/slcand -F -c -f -b43A301 -o /dev/%I can0
+ExecStart=/usr/bin/slcand -F -c -f -s6 -o /dev/%I can0
 
 ExecStartPost=/usr/sbin/ip link set can0 txqueuelen 1000
 ExecStartPost=/usr/sbin/ip link set can0 up
